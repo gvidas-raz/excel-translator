@@ -16,17 +16,21 @@ flags.DEFINE_string('file', None, 'Excel file name to translate', short_name='f'
 flags.DEFINE_string('source', None, 'The first cell in the column to translate', short_name='s')
 flags.DEFINE_string('dest', None, 'The first cell in the column to write the translation to', short_name='d')
 
-flags.mark_flags_as_required('file', 'source', 'dest')
+flags.mark_flags_as_required(['file', 'source', 'dest'])
 
 FLAGS = flags.FLAGS
 
 DEEPL_URL = 'https://api-free.deepl.com/v2/translate'
 
 def main(argv):
-    source = re.split(r"([a-z]+)([0-9]+)", FLAGS.source)
-    dest = re.split(r"([a-z]+)([0-9]+)", FLAGS.dest)
+    source = list(filter(None, re.split(r'(\d+)', FLAGS.source)))
+    dest = list(filter(None, re.split(r'(\d+)', FLAGS.dest)))
+    print(source, dest)
 
     workbook = openpyxl.load_workbook(filename=FLAGS.file)
+    filename_bits = FLAGS.file.split('.')
+    # make a backup of the excel file in case we mess it up
+    workbook.save(filename_bits[0]+'_backup.'+filename_bits[1])
     sheet = workbook.active
 
     while sheet[source[0]+source[1]].value is not None:
@@ -36,26 +40,28 @@ def main(argv):
             'source_lang': 'ES',
             'target_lang': 'EN'
         }
-        headers = {'Authorization': 'DeepL-Auth-Key {API_KEY}'}
+        headers = {'Authorization': 'DeepL-Auth-Key {key}'.format(key=API_KEY)}
         try:
-            response = requests.post(DEEPL_URL, query=query, headers=headers)
+            response = requests.post(DEEPL_URL, params=query, headers=headers)
             response.raise_for_status()
         except requests.exceptions.HTTPError as error:
             print(error)
+            return
         
         try:
             content = response.json()
         except ValueError as error:
             print(error)
+            return
 
-        translation = content['translation'][0]['text']
+        translation = content['translations'][0]['text']
 
         sheet[dest[0]+dest[1]] = translation
-        
-        source[1] += 1
-        dest[1] += 1
+
+        source[1] = str(int(source[1])+1)
+        dest[1] += str(int(dest[1])+1)
     
-    workbook.save()
+    workbook.save(FLAGS.file)
     workbook.close()
         
 if __name__ == "__main__":
