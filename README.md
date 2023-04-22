@@ -34,6 +34,8 @@ python ./translate --file <excel_filename> --source <source_cell> --dest <dest_c
 ```
 
 `--file or -f` - the file path to the excel file
+
 `--source or -s` - the source text cell to start going down the column from e.g.: 'A1'
+
 `--dest or -s` - the destination text cell to start going down the column from
  and write the translation to e.g.: 'B1'
